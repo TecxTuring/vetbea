@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { LoginForm } from "./form";
+import { DemoButton } from "./demo-button";
 
 export const metadata = { title: "Entrar" };
+
+// a primeira entrada do dia na demonstração recria os dados fictícios
+export const maxDuration = 60;
 
 export default function LoginPage() {
   return (
@@ -27,6 +31,13 @@ export default function LoginPage() {
           <h1 className="text-2xl font-semibold text-slate-800">Entrar</h1>
           <p className="mb-6 text-sm text-slate-500">Acesse sua conta Mapigo.</p>
           <LoginForm />
+          <div className="my-6 flex items-center gap-3 text-xs text-slate-400">
+            <span className="h-px flex-1 bg-slate-200" /> ou <span className="h-px flex-1 bg-slate-200" />
+          </div>
+          <DemoButton />
+          <p className="mt-2 text-center text-xs text-slate-500">
+            Clínica fictícia com clientes, agenda, internações e financeiro. Os dados são renovados todo dia.
+          </p>
           <p className="mt-6 text-center text-sm text-slate-500">
             Ainda não usa o Mapigo?{" "}
             <Link href="/cadastro" className="link">

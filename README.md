@@ -70,7 +70,11 @@ npm run db:seed               # (opcional) dados de demonstração
 npm run dev
 ```
 
-Acesse http://localhost:3000. Com os dados de demonstração, entre com `admin@mapigo.dev` / `mapigo123`. Os usuários `bruno@`, `carla@` e `recepcao@mapigo.dev` usam a mesma senha.
+Acesse http://localhost:3000. Para testar com dados fictícios, clique em **Testar com dados de demonstração** na tela de login ou entre com `demo@mapigo.com.br` / `demo1234`.
+
+### Conta de demonstração
+
+A clínica demo (slug `demo`) traz clientes, pets, agenda do dia, internações, vendas de 12 meses, estoque, financeiro e NPS. Ela é recriada automaticamente no primeiro acesso de cada dia e pela rotina diária, então as alterações dos visitantes são descartadas. Na demo não é possível alterar usuários e dados da clínica, e nenhuma mensagem real é enviada.
 
 ## Publicando em produção
 

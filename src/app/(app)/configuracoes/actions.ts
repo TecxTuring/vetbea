@@ -7,9 +7,11 @@ import { auditar, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { falha } from "@/lib/flash";
 import { bool, int, opt, str } from "@/lib/form";
+import { ehClinicaDemo } from "@/lib/demo";
 
 export async function salvarClinica(fd: FormData) {
   const s = await requireRole("ADMIN");
+  if (await ehClinicaDemo(s.clinicaId)) falha("/configuracoes", "Na demonstração os dados da clínica não podem ser alterados.");
   await db.clinica.update({
     where: { id: s.clinicaId },
     data: {
@@ -29,6 +31,7 @@ export async function salvarClinica(fd: FormData) {
 
 export async function salvarUsuario(fd: FormData) {
   const s = await requireRole("ADMIN");
+  if (await ehClinicaDemo(s.clinicaId)) falha("/configuracoes/usuarios", "Na demonstração não é possível criar ou alterar usuários.");
   const id = opt(fd, "id");
   const email = str(fd, "email").toLowerCase();
   const senha = str(fd, "senha");

@@ -2,6 +2,7 @@ import { addDays, endOfDay, startOfDay, subDays } from "date-fns";
 import type { CanalMensagem, Mensagem, Tutor } from "@prisma/client";
 import { db } from "./db";
 import { data, hora } from "./format";
+import { ehClinicaDemo } from "./demo";
 
 const appUrl = () => process.env.APP_URL ?? "";
 const primeiroNome = (n: string) => n.split(" ")[0];
@@ -156,6 +157,7 @@ export function destinoPara(canal: CanalMensagem, tutor: Tutor): string | null {
 }
 
 export async function processarFila(clinicaId: string) {
+  if (await ehClinicaDemo(clinicaId)) return 0; // a demonstração nunca envia mensagens reais
   const pendentes = await db.mensagem.findMany({
     where: { clinicaId, status: "PENDENTE" },
     include: { tutor: true },
