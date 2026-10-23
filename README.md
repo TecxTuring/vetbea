@@ -76,7 +76,7 @@ Acesse http://localhost:3000. Com os dados de demonstração, entre com `admin@m
 
 1. Crie um banco PostgreSQL (Neon, Supabase, RDS etc.).
 2. Publique na Vercel (ou em qualquer host Node) com estas variáveis de ambiente:
-   - `DATABASE_URL`, `AUTH_SECRET` (gere com `openssl rand -hex 32`), `APP_URL`
+   - `DATABASE_URL` (conexão com pooling), `DIRECT_URL` (conexão direta, para as migrações), `AUTH_SECRET` (gere com `openssl rand -hex 32`), `APP_URL`
    - `TZ=America/Sao_Paulo`
    - `CRON_SECRET`
 3. Na Vercel, o `vercel.json` já aplica as migrações a cada deploy e agenda a rotina diária de lembretes (`/api/cron`, 8h de Brasília). Em outros hosts, rode `npm run db:migrate` no deploy e agende um `GET /api/cron` diário com o header `Authorization: Bearer <CRON_SECRET>`.
