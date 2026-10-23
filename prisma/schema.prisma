@@ -1,0 +1,864 @@
+// Mapigo — schema do banco de dados
+// Todos os registros principais pertencem a uma Clinica (multi-clínica / SaaS).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Núcleo ─────────────────────────
+
+model Clinica {
+  id        String   @id @default(cuid())
+  nome      String
+  cnpj      String?
+  telefone  String?
+  email     String?
+  endereco  String?
+  cidade    String?
+  uf        String?
+  slug      String   @unique // usado no site e portal do tutor
+  sobre     String?
+  createdAt DateTime @default(now())
+
+  usuarios        Usuario[]
+  tutores         Tutor[]
+  animais         Animal[]
+  agendamentos    Agendamento[]
+  atendimentos    Atendimento[]
+  vacinas         VacinaAplicada[]
+  protocolos      ProtocoloVacina[]
+  exames          Exame[]
+  receitas        Receita[]
+  modelos         ModeloDocumento[]
+  documentos      Documento[]
+  orcamentos      Orcamento[]
+  produtos        Produto[]
+  movimentos      MovimentoEstoque[]
+  fornecedores    Fornecedor[]
+  pedidosCompra   PedidoCompra[]
+  vendas          Venda[]
+  caixas          Caixa[]
+  contas          ContaFinanceira[]
+  boxes           Box[]
+  internacoes     Internacao[]
+  mensagens       Mensagem[]
+  pesquisas       PesquisaNps[]
+  campanhas       Campanha[]
+  inventarios     Inventario[]
+  modelosPrescr   ModeloPrescricao[]
+  auditoria       Auditoria[]
+}
+
+enum Papel {
+  ADMIN
+  VETERINARIO
+  RECEPCAO
+  FINANCEIRO
+  AUXILIAR
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  clinicaId String
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  nome      String
+  email     String   @unique
+  senhaHash String
+  papel     Papel    @default(RECEPCAO)
+  crmv      String?
+  cor       String   @default("#0d9488") // cor na agenda
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  agendamentos Agendamento[]
+  atendimentos Atendimento[]
+  vacinas      VacinaAplicada[]
+  receitas     Receita[]
+  internacoes  Internacao[]
+  vendas       Venda[]
+  caixas       Caixa[]
+
+  @@index([clinicaId])
+}
+
+model Auditoria {
+  id        String   @id @default(cuid())
+  clinicaId String
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  usuarioId String?
+  acao      String
+  entidade  String
+  entidadeId String?
+  detalhes  String?
+  createdAt DateTime @default(now())
+
+  @@index([clinicaId, createdAt])
+}
+
+// ───────────────────────── Clientes e pacientes ─────────────────────────
+
+model Tutor {
+  id             String    @id @default(cuid())
+  clinicaId      String
+  clinica        Clinica   @relation(fields: [clinicaId], references: [id])
+  nome           String
+  cpf            String?
+  email          String?
+  telefone       String?
+  whatsapp       String?
+  cep            String?
+  endereco       String?
+  bairro         String?
+  cidade         String?
+  uf             String?
+  dataNascimento DateTime?
+  observacoes    String?
+  saldoCredito   Decimal   @default(0) @db.Decimal(12, 2) // créditos pré-pagos
+  aceitaMensagens Boolean  @default(true)
+  portalToken    String    @unique @default(cuid()) // acesso ao portal do tutor
+  createdAt      DateTime  @default(now())
+
+  animais      Animal[]
+  agendamentos Agendamento[]
+  orcamentos   Orcamento[]
+  vendas       Venda[]
+  contas       ContaFinanceira[]
+  mensagens    Mensagem[]
+  pesquisas    PesquisaNps[]
+
+  @@index([clinicaId, nome])
+}
+
+model Animal {
+  id             String    @id @default(cuid())
+  clinicaId      String
+  clinica        Clinica   @relation(fields: [clinicaId], references: [id])
+  tutorId        String
+  tutor          Tutor     @relation(fields: [tutorId], references: [id])
+  nome           String
+  especie        String // Canina, Felina, Ave, ...
+  raca           String?
+  sexo           String? // M / F
+  castrado       Boolean   @default(false)
+  dataNascimento DateTime?
+  pelagem        String?
+  peso           Decimal?  @db.Decimal(8, 3)
+  microchip      String?
+  alergias       String?
+  observacoes    String?
+  obito          Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  agendamentos Agendamento[]
+  atendimentos Atendimento[]
+  vacinas      VacinaAplicada[]
+  exames       Exame[]
+  receitas     Receita[]
+  documentos   Documento[]
+  orcamentos   Orcamento[]
+  internacoes  Internacao[]
+  vendas       Venda[]
+  pesos        RegistroPeso[]
+
+  @@index([clinicaId, nome])
+  @@index([tutorId])
+}
+
+model RegistroPeso {
+  id       String   @id @default(cuid())
+  animalId String
+  animal   Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  peso     Decimal  @db.Decimal(8, 3)
+  data     DateTime @default(now())
+}
+
+// ───────────────────────── Agenda e prontuário ─────────────────────────
+
+enum TipoAgendamento {
+  CONSULTA
+  RETORNO
+  VACINA
+  EXAME
+  CIRURGIA
+  BANHO_TOSA
+  OUTRO
+}
+
+enum StatusAgendamento {
+  AGENDADO
+  CONFIRMADO
+  AGUARDANDO
+  EM_ATENDIMENTO
+  CONCLUIDO
+  FALTOU
+  CANCELADO
+}
+
+model Agendamento {
+  id            String            @id @default(cuid())
+  clinicaId     String
+  clinica       Clinica           @relation(fields: [clinicaId], references: [id])
+  tutorId       String?
+  tutor         Tutor?            @relation(fields: [tutorId], references: [id])
+  animalId      String?
+  animal        Animal?           @relation(fields: [animalId], references: [id])
+  veterinarioId String?
+  veterinario   Usuario?          @relation(fields: [veterinarioId], references: [id])
+  tipo          TipoAgendamento   @default(CONSULTA)
+  status        StatusAgendamento @default(AGENDADO)
+  inicio        DateTime
+  fim           DateTime
+  observacoes   String?
+  lembreteEnviado Boolean         @default(false)
+  createdAt     DateTime          @default(now())
+
+  atendimento Atendimento?
+
+  @@index([clinicaId, inicio])
+}
+
+model Atendimento {
+  id            String    @id @default(cuid())
+  clinicaId     String
+  clinica       Clinica   @relation(fields: [clinicaId], references: [id])
+  animalId      String
+  animal        Animal    @relation(fields: [animalId], references: [id])
+  veterinarioId String?
+  veterinario   Usuario?  @relation(fields: [veterinarioId], references: [id])
+  agendamentoId String?   @unique
+  agendamento   Agendamento? @relation(fields: [agendamentoId], references: [id])
+  data          DateTime  @default(now())
+  tipo          String    @default("Consulta")
+  queixa        String?
+  anamnese      String?
+  exameFisico   String?
+  diagnostico   String?
+  conduta       String?
+  peso          Decimal?  @db.Decimal(8, 3)
+  temperatura   Decimal?  @db.Decimal(4, 1)
+  fc            Int?
+  fr            Int?
+  tpc           String?
+  mucosas       String?
+  hidratacao    String?
+  finalizado    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  venda Venda?
+
+  @@index([clinicaId, data])
+  @@index([animalId])
+}
+
+model ProtocoloVacina {
+  id           String  @id @default(cuid())
+  clinicaId    String
+  clinica      Clinica @relation(fields: [clinicaId], references: [id])
+  nome         String // ex.: V10 filhote
+  especie      String
+  vacina       String
+  doses        Int     @default(1)
+  intervaloDias Int    @default(21) // intervalo entre doses
+  reforcoDias  Int     @default(365) // reforço após a última dose
+  ativo        Boolean @default(true)
+}
+
+model VacinaAplicada {
+  id            String    @id @default(cuid())
+  clinicaId     String
+  clinica       Clinica   @relation(fields: [clinicaId], references: [id])
+  animalId      String
+  animal        Animal    @relation(fields: [animalId], references: [id])
+  veterinarioId String?
+  veterinario   Usuario?  @relation(fields: [veterinarioId], references: [id])
+  produtoId     String?
+  produto       Produto?  @relation(fields: [produtoId], references: [id])
+  nome          String
+  dose          String?
+  lote          String?
+  fabricante    String?
+  aplicadaEm    DateTime? // null = programada
+  proximaDose   DateTime?
+  lembreteEnviado Boolean @default(false)
+  createdAt     DateTime  @default(now())
+
+  @@index([clinicaId, proximaDose])
+}
+
+enum StatusExame {
+  SOLICITADO
+  COLETADO
+  RESULTADO
+  CANCELADO
+}
+
+model Exame {
+  id            String      @id @default(cuid())
+  clinicaId     String
+  clinica       Clinica     @relation(fields: [clinicaId], references: [id])
+  animalId      String
+  animal        Animal      @relation(fields: [animalId], references: [id])
+  nome          String
+  laboratorio   String?
+  status        StatusExame @default(SOLICITADO)
+  solicitadoEm  DateTime    @default(now())
+  resultadoEm   DateTime?
+  resultado     String?
+  observacoes   String?
+  tutorNotificado Boolean   @default(false)
+}
+
+model Receita {
+  id            String   @id @default(cuid())
+  clinicaId     String
+  clinica       Clinica  @relation(fields: [clinicaId], references: [id])
+  animalId      String
+  animal        Animal   @relation(fields: [animalId], references: [id])
+  veterinarioId String?
+  veterinario   Usuario? @relation(fields: [veterinarioId], references: [id])
+  controlada    Boolean  @default(false)
+  conteudo      String
+  data          DateTime @default(now())
+}
+
+enum TipoModelo {
+  RECEITA
+  DOCUMENTO
+}
+
+model ModeloDocumento {
+  id        String     @id @default(cuid())
+  clinicaId String
+  clinica   Clinica    @relation(fields: [clinicaId], references: [id])
+  tipo      TipoModelo
+  nome      String
+  conteudo  String // aceita variáveis {{animal.nome}}, {{tutor.nome}}, ...
+}
+
+model Documento {
+  id        String   @id @default(cuid())
+  clinicaId String
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  animalId  String
+  animal    Animal   @relation(fields: [animalId], references: [id])
+  titulo    String
+  conteudo  String
+  data      DateTime @default(now())
+}
+
+enum StatusOrcamento {
+  ABERTO
+  APROVADO
+  RECUSADO
+  CONVERTIDO
+}
+
+model Orcamento {
+  id        String          @id @default(cuid())
+  clinicaId String
+  clinica   Clinica         @relation(fields: [clinicaId], references: [id])
+  tutorId   String
+  tutor     Tutor           @relation(fields: [tutorId], references: [id])
+  animalId  String?
+  animal    Animal?         @relation(fields: [animalId], references: [id])
+  status    StatusOrcamento @default(ABERTO)
+  validade  DateTime?
+  observacoes String?
+  desconto  Decimal         @default(0) @db.Decimal(12, 2)
+  createdAt DateTime        @default(now())
+  itens     OrcamentoItem[]
+}
+
+model OrcamentoItem {
+  id          String    @id @default(cuid())
+  orcamentoId String
+  orcamento   Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  produtoId   String?
+  produto     Produto?  @relation(fields: [produtoId], references: [id])
+  descricao   String
+  quantidade  Decimal   @db.Decimal(12, 3)
+  valorUnit   Decimal   @db.Decimal(12, 2)
+}
+
+// ───────────────────────── Estoque ─────────────────────────
+
+enum TipoProduto {
+  PRODUTO
+  SERVICO
+  MEDICAMENTO
+  VACINA
+}
+
+model Produto {
+  id             String      @id @default(cuid())
+  clinicaId      String
+  clinica        Clinica     @relation(fields: [clinicaId], references: [id])
+  nome           String
+  tipo           TipoProduto @default(PRODUTO)
+  categoria      String?
+  codigoBarras   String?
+  unidade        String      @default("UN")
+  precoCusto     Decimal     @default(0) @db.Decimal(12, 2)
+  precoVenda     Decimal     @default(0) @db.Decimal(12, 2)
+  controlaEstoque Boolean    @default(true)
+  estoqueAtual   Decimal     @default(0) @db.Decimal(12, 3)
+  estoqueMinimo  Decimal     @default(0) @db.Decimal(12, 3)
+  // Fracionamento: ex. frasco de 50 ml vendido por ml -> fatorFracao = 50, unidadeFracao = "ML"
+  fracionavel    Boolean     @default(false)
+  unidadeFracao  String?
+  fatorFracao    Decimal?    @db.Decimal(12, 3)
+  validade       DateTime?
+  comissaoPct    Decimal     @default(0) @db.Decimal(5, 2)
+  ativo          Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+
+  movimentos   MovimentoEstoque[]
+  vendaItens   VendaItem[]
+  orcItens     OrcamentoItem[]
+  pedidoItens  PedidoCompraItem[]
+  vacinas      VacinaAplicada[]
+  inventItens  InventarioItem[]
+
+  @@index([clinicaId, nome])
+}
+
+enum TipoMovimento {
+  ENTRADA_COMPRA
+  SAIDA_VENDA
+  CONSUMO_INTERNO
+  AVARIA
+  VENCIMENTO
+  DOACAO
+  DEVOLUCAO_FORNECEDOR
+  AJUSTE_INVENTARIO
+  ESTORNO_VENDA
+}
+
+model MovimentoEstoque {
+  id         String        @id @default(cuid())
+  clinicaId  String
+  clinica    Clinica       @relation(fields: [clinicaId], references: [id])
+  produtoId  String
+  produto    Produto       @relation(fields: [produtoId], references: [id])
+  tipo       TipoMovimento
+  quantidade Decimal       @db.Decimal(12, 3) // positivo = entrada, negativo = saída
+  custoUnit  Decimal?      @db.Decimal(12, 2)
+  observacao String?
+  referencia String?
+  usuarioId  String?
+  data       DateTime      @default(now())
+
+  @@index([clinicaId, data])
+  @@index([produtoId])
+}
+
+model Fornecedor {
+  id        String   @id @default(cuid())
+  clinicaId String
+  clinica   Clinica  @relation(fields: [clinicaId], references: [id])
+  nome      String
+  cnpj      String?
+  telefone  String?
+  email     String?
+  contato   String?
+  pedidos   PedidoCompra[]
+  contas    ContaFinanceira[]
+}
+
+enum StatusPedido {
+  RASCUNHO
+  ENVIADO
+  RECEBIDO
+  CANCELADO
+}
+
+model PedidoCompra {
+  id           String       @id @default(cuid())
+  clinicaId    String
+  clinica      Clinica      @relation(fields: [clinicaId], references: [id])
+  fornecedorId String?
+  fornecedor   Fornecedor?  @relation(fields: [fornecedorId], references: [id])
+  status       StatusPedido @default(RASCUNHO)
+  numeroNF     String?
+  chaveNFe     String?
+  observacoes  String?
+  createdAt    DateTime     @default(now())
+  recebidoEm   DateTime?
+  itens        PedidoCompraItem[]
+}
+
+model PedidoCompraItem {
+  id         String       @id @default(cuid())
+  pedidoId   String
+  pedido     PedidoCompra @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produtoId  String
+  produto    Produto      @relation(fields: [produtoId], references: [id])
+  quantidade Decimal      @db.Decimal(12, 3)
+  custoUnit  Decimal      @db.Decimal(12, 2)
+}
+
+model Inventario {
+  id          String   @id @default(cuid())
+  clinicaId   String
+  clinica     Clinica  @relation(fields: [clinicaId], references: [id])
+  descricao   String
+  finalizado  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  finalizadoEm DateTime?
+  itens       InventarioItem[]
+}
+
+model InventarioItem {
+  id           String     @id @default(cuid())
+  inventarioId String
+  inventario   Inventario @relation(fields: [inventarioId], references: [id], onDelete: Cascade)
+  produtoId    String
+  produto      Produto    @relation(fields: [produtoId], references: [id])
+  sistema      Decimal    @db.Decimal(12, 3)
+  contado      Decimal    @db.Decimal(12, 3)
+
+  @@unique([inventarioId, produtoId])
+}
+
+// ───────────────────────── Vendas e financeiro ─────────────────────────
+
+enum StatusVenda {
+  ABERTA
+  FINALIZADA
+  CANCELADA
+}
+
+model Venda {
+  id            String      @id @default(cuid())
+  clinicaId     String
+  clinica       Clinica     @relation(fields: [clinicaId], references: [id])
+  tutorId       String?
+  tutor         Tutor?      @relation(fields: [tutorId], references: [id])
+  animalId      String?
+  animal        Animal?     @relation(fields: [animalId], references: [id])
+  usuarioId     String?
+  usuario       Usuario?    @relation(fields: [usuarioId], references: [id])
+  atendimentoId String?     @unique
+  atendimento   Atendimento? @relation(fields: [atendimentoId], references: [id])
+  caixaId       String?
+  caixa         Caixa?      @relation(fields: [caixaId], references: [id])
+  status        StatusVenda @default(ABERTA)
+  desconto      Decimal     @default(0) @db.Decimal(12, 2)
+  total         Decimal     @default(0) @db.Decimal(12, 2)
+  createdAt     DateTime    @default(now())
+  finalizadaEm  DateTime?
+
+  itens      VendaItem[]
+  pagamentos Pagamento[]
+
+  @@index([clinicaId, createdAt])
+}
+
+model VendaItem {
+  id         String   @id @default(cuid())
+  vendaId    String
+  venda      Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produtoId  String?
+  produto    Produto? @relation(fields: [produtoId], references: [id])
+  descricao  String
+  quantidade Decimal  @db.Decimal(12, 3)
+  fracionado Boolean  @default(false) // quantidade expressa na unidade de fração
+  valorUnit  Decimal  @db.Decimal(12, 2)
+  total      Decimal  @db.Decimal(12, 2)
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  DEBITO
+  CREDITO
+  BOLETO
+  CREDITO_CLIENTE
+  A_PRAZO
+}
+
+model Pagamento {
+  id           String         @id @default(cuid())
+  vendaId      String
+  venda        Venda          @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  forma        FormaPagamento
+  valor        Decimal        @db.Decimal(12, 2)
+  parcelas     Int            @default(1)
+  taxaPct      Decimal        @default(0) @db.Decimal(5, 2) // taxa da operadora
+  previsaoRecebimento DateTime?
+  conciliado   Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+}
+
+model Caixa {
+  id           String    @id @default(cuid())
+  clinicaId    String
+  clinica      Clinica   @relation(fields: [clinicaId], references: [id])
+  usuarioId    String
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id])
+  abertoEm     DateTime  @default(now())
+  fechadoEm    DateTime?
+  saldoInicial Decimal   @db.Decimal(12, 2)
+  saldoFinal   Decimal?  @db.Decimal(12, 2) // valor contado no fechamento
+  movimentos   MovimentoCaixa[]
+  vendas       Venda[]
+}
+
+enum TipoMovCaixa {
+  SUPRIMENTO
+  SANGRIA
+  RECEBIMENTO
+  PAGAMENTO
+}
+
+model MovimentoCaixa {
+  id        String       @id @default(cuid())
+  caixaId   String
+  caixa     Caixa        @relation(fields: [caixaId], references: [id], onDelete: Cascade)
+  tipo      TipoMovCaixa
+  forma     FormaPagamento @default(DINHEIRO)
+  valor     Decimal      @db.Decimal(12, 2)
+  descricao String
+  createdAt DateTime     @default(now())
+}
+
+enum TipoConta {
+  PAGAR
+  RECEBER
+}
+
+enum StatusConta {
+  ABERTA
+  PAGA
+  CANCELADA
+}
+
+model ContaFinanceira {
+  id           String      @id @default(cuid())
+  clinicaId    String
+  clinica      Clinica     @relation(fields: [clinicaId], references: [id])
+  tipo         TipoConta
+  descricao    String
+  categoria    String      @default("Outros")
+  valor        Decimal     @db.Decimal(12, 2)
+  vencimento   DateTime
+  pagoEm       DateTime?
+  valorPago    Decimal?    @db.Decimal(12, 2)
+  status       StatusConta @default(ABERTA)
+  forma        FormaPagamento?
+  fornecedorId String?
+  fornecedor   Fornecedor? @relation(fields: [fornecedorId], references: [id])
+  tutorId      String?
+  tutor        Tutor?      @relation(fields: [tutorId], references: [id])
+  vendaId      String?
+  recorrente   Boolean     @default(false)
+  observacoes  String?
+  createdAt    DateTime    @default(now())
+
+  @@index([clinicaId, vencimento])
+}
+
+// ───────────────────────── Internação ─────────────────────────
+
+model Box {
+  id        String  @id @default(cuid())
+  clinicaId String
+  clinica   Clinica @relation(fields: [clinicaId], references: [id])
+  nome      String
+  tipo      String  @default("Geral") // Geral, Isolamento, UTI...
+  ativo     Boolean @default(true)
+  internacoes Internacao[]
+}
+
+enum StatusInternacao {
+  INTERNADO
+  ALTA
+  OBITO
+  TRANSFERIDO
+}
+
+enum Triagem {
+  EMERGENCIA
+  MUITO_URGENTE
+  URGENTE
+  POUCO_URGENTE
+  NAO_URGENTE
+}
+
+model Internacao {
+  id            String           @id @default(cuid())
+  clinicaId     String
+  clinica       Clinica          @relation(fields: [clinicaId], references: [id])
+  animalId      String
+  animal        Animal           @relation(fields: [animalId], references: [id])
+  veterinarioId String?
+  veterinario   Usuario?         @relation(fields: [veterinarioId], references: [id])
+  boxId         String?
+  box           Box?             @relation(fields: [boxId], references: [id])
+  triagem       Triagem          @default(NAO_URGENTE)
+  status        StatusInternacao @default(INTERNADO)
+  motivo        String
+  entrada       DateTime         @default(now())
+  saida         DateTime?
+  resumoAlta    String?
+
+  prescricoes  Prescricao[]
+  parametros   ParametroClinico[]
+  evolucoes    Evolucao[]
+  solicitacoes SolicitacaoTutor[]
+}
+
+model Prescricao {
+  id             String     @id @default(cuid())
+  internacaoId   String
+  internacao     Internacao @relation(fields: [internacaoId], references: [id], onDelete: Cascade)
+  medicamento    String
+  dose           String
+  via            String
+  frequenciaHoras Int
+  inicio         DateTime   @default(now())
+  fim            DateTime?
+  ativa          Boolean    @default(true)
+  observacao     String?
+  aplicacoes     AplicacaoPrescricao[]
+}
+
+model AplicacaoPrescricao {
+  id           String     @id @default(cuid())
+  prescricaoId String
+  prescricao   Prescricao @relation(fields: [prescricaoId], references: [id], onDelete: Cascade)
+  previstoEm   DateTime
+  realizadoEm  DateTime?
+  responsavel  String?
+  observacao   String?
+
+  @@index([previstoEm])
+}
+
+model ModeloPrescricao {
+  id        String  @id @default(cuid())
+  clinicaId String
+  clinica   Clinica @relation(fields: [clinicaId], references: [id])
+  nome      String
+  // JSON: [{ medicamento, dose, via, frequenciaHoras }]
+  itens     Json
+}
+
+model ParametroClinico {
+  id           String     @id @default(cuid())
+  internacaoId String
+  internacao   Internacao @relation(fields: [internacaoId], references: [id], onDelete: Cascade)
+  data         DateTime   @default(now())
+  temperatura  Decimal?   @db.Decimal(4, 1)
+  fc           Int?
+  fr           Int?
+  pas          Int?
+  glicemia     Int?
+  tpc          String?
+  mucosas      String?
+  hidratacao   String?
+  dor          Int? // escala 0-10
+  observacao   String?
+  responsavel  String?
+}
+
+model Evolucao {
+  id           String     @id @default(cuid())
+  internacaoId String
+  internacao   Internacao @relation(fields: [internacaoId], references: [id], onDelete: Cascade)
+  texto        String
+  trocaTurno   Boolean    @default(false)
+  responsavel  String?
+  createdAt    DateTime   @default(now())
+}
+
+enum StatusSolicitacao {
+  PENDENTE
+  APROVADA
+  RECUSADA
+}
+
+model SolicitacaoTutor {
+  id           String            @id @default(cuid())
+  internacaoId String
+  internacao   Internacao        @relation(fields: [internacaoId], references: [id], onDelete: Cascade)
+  titulo       String
+  descricao    String
+  valor        Decimal?          @db.Decimal(12, 2)
+  status       StatusSolicitacao @default(PENDENTE)
+  token        String            @unique @default(cuid())
+  respondidaEm DateTime?
+  createdAt    DateTime          @default(now())
+}
+
+// ───────────────────────── Fidelização ─────────────────────────
+
+enum CanalMensagem {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+enum TipoMensagem {
+  LEMBRETE_AGENDA
+  LEMBRETE_VACINA
+  RESULTADO_EXAME
+  ANIVERSARIO
+  CAMPANHA
+  NPS
+  RETORNO
+  SOLICITACAO
+}
+
+enum StatusMensagem {
+  PENDENTE
+  ENVIADA
+  ERRO
+}
+
+model Mensagem {
+  id           String         @id @default(cuid())
+  clinicaId    String
+  clinica      Clinica        @relation(fields: [clinicaId], references: [id])
+  tutorId      String
+  tutor        Tutor          @relation(fields: [tutorId], references: [id])
+  canal        CanalMensagem  @default(WHATSAPP)
+  tipo         TipoMensagem
+  conteudo     String
+  status       StatusMensagem @default(PENDENTE)
+  campanhaId   String?
+  createdAt    DateTime       @default(now())
+  enviadaEm    DateTime?
+
+  @@index([clinicaId, status])
+}
+
+model Campanha {
+  id        String        @id @default(cuid())
+  clinicaId String
+  clinica   Clinica       @relation(fields: [clinicaId], references: [id])
+  nome      String
+  canal     CanalMensagem @default(SMS)
+  mensagem  String
+  filtro    String // TODOS, INATIVOS_90, ESPECIE:Canina...
+  total     Int           @default(0)
+  createdAt DateTime      @default(now())
+}
+
+model PesquisaNps {
+  id          String    @id @default(cuid())
+  clinicaId   String
+  clinica     Clinica   @relation(fields: [clinicaId], references: [id])
+  tutorId     String
+  tutor       Tutor     @relation(fields: [tutorId], references: [id])
+  token       String    @unique @default(cuid())
+  nota        Int?
+  comentario  String?
+  createdAt   DateTime  @default(now())
+  respondidaEm DateTime?
+}

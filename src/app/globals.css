@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-50: #effcf9;
+  --color-brand-100: #c8f5ec;
+  --color-brand-200: #93eadb;
+  --color-brand-300: #57d7c5;
+  --color-brand-400: #2abcab;
+  --color-brand-500: #12a092;
+  --color-brand-600: #0b8077;
+  --color-brand-700: #0e6661;
+  --color-brand-800: #10514e;
+  --color-brand-900: #124442;
+  --color-accent-400: #ffa057;
+  --color-accent-500: #ff7d2e;
+  --color-accent-600: #ed5f12;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7f8;
+  color: #1f2937;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-100;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-slate-600;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700;
+  }
+  .btn-accent {
+    @apply btn bg-accent-500 text-white shadow-sm hover:bg-accent-600;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 text-xs;
+  }
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+  .table {
+    @apply w-full text-left text-sm;
+  }
+  .table th {
+    @apply border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .table td {
+    @apply border-b border-slate-100 px-4 py-3 align-middle;
+  }
+  .table tbody tr:hover {
+    @apply bg-slate-50/70;
+  }
+  .link {
+    @apply font-medium text-brand-700 hover:underline;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+  }
 }
