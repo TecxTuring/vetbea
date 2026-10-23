@@ -75,6 +75,21 @@ export async function adicionarCredito(id: string, fd: FormData) {
         data: { caixaId: caixa.id, tipo: "RECEBIMENTO", forma, valor, descricao: `Crédito para ${tutor.nome}` },
       });
     }
+    await tx.contaFinanceira.create({
+      data: {
+        clinicaId: s.clinicaId,
+        tipo: "RECEBER",
+        descricao: `Crédito pré-pago — ${tutor.nome}`,
+        categoria: "Créditos de clientes",
+        valor,
+        valorPago: valor,
+        vencimento: new Date(),
+        pagoEm: new Date(),
+        status: "PAGA",
+        forma,
+        tutorId: id,
+      },
+    });
   });
   await auditar("adicionou crédito", "Tutor", id, String(valor));
   revalidatePath(`/clientes/${id}`);
