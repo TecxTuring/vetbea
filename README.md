@@ -79,8 +79,7 @@ Acesse http://localhost:3000. Com os dados de demonstração, entre com `admin@m
    - `DATABASE_URL`, `AUTH_SECRET` (gere com `openssl rand -hex 32`), `APP_URL`
    - `TZ=America/Sao_Paulo`
    - `CRON_SECRET`
-3. Rode `npm run db:migrate` no deploy.
-4. Agende uma chamada diária (por exemplo, às 8h) para `GET /api/cron` com o header `Authorization: Bearer <CRON_SECRET>`. Na Vercel, use o Vercel Cron.
+3. Na Vercel, o `vercel.json` já aplica as migrações a cada deploy e agenda a rotina diária de lembretes (`/api/cron`, 8h de Brasília). Em outros hosts, rode `npm run db:migrate` no deploy e agende um `GET /api/cron` diário com o header `Authorization: Bearer <CRON_SECRET>`.
 
 ### Envio automático de mensagens
 
