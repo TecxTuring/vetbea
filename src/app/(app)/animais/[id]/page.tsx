@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { data, dataHora, idade, qtd, rotulo } from "@/lib/format";
-import { Badge, Card, Collapsible, corStatus, Empty, Field, PageHeader, Table, Tabs } from "@/components/ui";
+import { Badge, Card, Collapsible, Empty, Field, PageHeader, Table, Tabs } from "@/components/ui";
 import { ModeloTextarea, SubmitButton } from "@/components/client";
 import { ExameCard } from "@/components/exame-card";
 import {

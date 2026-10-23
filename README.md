@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mapigo
 
-## Getting Started
+Sistema de gestão para clínicas veterinárias, hospitais veterinários e pet shops. Funciona na nuvem e atende várias clínicas na mesma instalação (SaaS).
 
-First, run the development server:
+## Funcionalidades
+
+**Atendimento veterinário**
+- Agenda por veterinário (colunas por profissional, encaixe, confirmação, chegada, faltas)
+- Prontuário completo: histórico em linha do tempo, sinais vitais, anamnese, exame físico, diagnóstico, curva de peso
+- Protocolos de vacina com doses programadas, carteira de vacinação e baixa automática no estoque
+- Exames: solicitação, coleta, resultado e aviso automático ao tutor
+- Modelos de receita (simples e controle especial em 2 vias) e documentos padronizados (atestados, termos) com variáveis
+- Consultório integrado ao caixa: itens lançados no atendimento vão direto para a venda
+- Orçamentos com envio por WhatsApp, impressão e conversão em venda
+
+**Internação**
+- Mapa de boxes e triagem por classificação de risco
+- Prescrições com mapa de execução de 24 h (aplicado / pendente / atrasado)
+- Modelos de prescrição, parâmetros clínicos com gráfico de temperatura
+- Evolução e passagem de plantão (troca de turno)
+- Solicitações de autorização ao tutor por link, com resposta em tempo real
+- Alta, transferência e óbito; lançamento de diárias
+
+**Estoque**
+- Produtos, medicamentos, vacinas e serviços; fracionamento (venda por ml, comprimido etc.)
+- Análise automática: consumo médio, dias de cobertura, curva ABC, produtos parados e sugestão de compra
+- Pedidos de compra, recebimento com atualização de custo e lançamento em contas a pagar
+- Registro de compras pelo XML da NF-e (cadastra fornecedor e produtos automaticamente)
+- Devolução ao fornecedor, consumo interno, avarias, perda por validade e doações
+- Inventário pelo celular com ajuste automático e etiquetas com código de barras (Code 128)
+
+**Financeiro**
+- Vendas (PDV) com múltiplas formas de pagamento, troco, desconto, crédito e venda a prazo
+- Caixa com abertura, sangria, suprimento e fechamento com conferência
+- Contas a pagar e receber (com recorrência e parcelamento)
+- Fluxo de caixa diário (realizado e previsto) e demonstrativo mensal por categoria
+- Conciliação de recebíveis de cartão
+- Clientes em débito (com cobrança via WhatsApp) e créditos pré-pagos
+
+**Fidelização**
+- Portal/app do tutor (link exclusivo): vacinas, agendamentos, exames, receitas, documentos e autorizações
+- Site grátis da clínica (`/site/<slug>`)
+- Frequência de retorno (clientes novos, ativos, em risco e inativos)
+- Pesquisa de satisfação (NPS) automática
+- Lembretes automáticos de agendamento, vacina, resultado de exame e aniversário do pet
+- Campanhas por SMS, WhatsApp ou e-mail com segmentação
+- Ranking dos melhores clientes
+- Conversa no WhatsApp a partir do sistema, com mensagens prontas
+
+**Extras**
+- Multi-clínica com cadastro self-service
+- Perfis de acesso: administrador, veterinário, auxiliar, recepção e financeiro
+- Relatórios: faturamento, categorias, mais vendidos, formas de pagamento e comissões
+- Auditoria de ações
+- Layout responsivo (celular e tablet) e impressão de receitas, documentos, orçamentos e recibos
+
+## Tecnologias
+
+Next.js 15 (App Router, Server Actions) · TypeScript · PostgreSQL · Prisma · Tailwind CSS 4
+
+## Rodando localmente
+
+Requisitos: Node 20+ e PostgreSQL 14+.
 
 ```bash
+cp .env.example .env          # ajuste DATABASE_URL e AUTH_SECRET
+npm install
+npx prisma migrate dev        # cria as tabelas
+npm run db:seed               # (opcional) dados de demonstração
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse http://localhost:3000. Com os dados de demonstração, entre com `admin@mapigo.dev` / `mapigo123`. Os usuários `bruno@`, `carla@` e `recepcao@mapigo.dev` usam a mesma senha.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Publicando em produção
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Crie um banco PostgreSQL (Neon, Supabase, RDS etc.).
+2. Publique na Vercel (ou em qualquer host Node) com estas variáveis de ambiente:
+   - `DATABASE_URL`, `AUTH_SECRET` (gere com `openssl rand -hex 32`), `APP_URL`
+   - `TZ=America/Sao_Paulo`
+   - `CRON_SECRET`
+3. Rode `npm run db:migrate` no deploy.
+4. Agende uma chamada diária (por exemplo, às 8h) para `GET /api/cron` com o header `Authorization: Bearer <CRON_SECRET>`. Na Vercel, use o Vercel Cron.
 
-## Learn More
+### Envio automático de mensagens
 
-To learn more about Next.js, take a look at the following resources:
+Sem integração configurada, os lembretes ficam em **Fidelização → Mensagens automáticas** para envio com 1 clique pelo WhatsApp Web.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Para envio automático, defina `WHATSAPP_WEBHOOK_URL`, `SMS_WEBHOOK_URL` e/ou `EMAIL_WEBHOOK_URL` (e os tokens). O sistema faz um `POST {to, message, canal}` para a URL configurada. Pode ser a API do seu provedor (Z-API, Twilio, Zenvia etc.) ou uma pequena função intermediária.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Próximos passos sugeridos
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Emissão de NFS-e/NF-e (integração com Focus NFe, eNotas ou PlugNotas)
+- Integração com maquininhas (Stone, Cielo) para conciliação automática
+- Upload de anexos (imagens e laudos em PDF) no prontuário
+- Agendamento online pelo próprio tutor no portal
+- Cobrança de assinatura das clínicas (planos SaaS)

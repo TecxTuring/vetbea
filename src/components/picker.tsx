@@ -28,6 +28,20 @@ export function Picker({
   const [aberto, setAberto] = useState(false);
   const [ativo, setAtivo] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // o React reseta o formulário após a action; limpa a seleção junto
+  useEffect(() => {
+    const form = inputRef.current?.form;
+    if (!form) return;
+    const limpar = () => {
+      setTexto(initial?.label ?? "");
+      setId(initial?.id ?? "");
+    };
+    form.addEventListener("reset", limpar);
+    return () => form.removeEventListener("reset", limpar);
+  }, [initial?.id, initial?.label]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -59,13 +73,21 @@ export function Picker({
         value={texto}
         placeholder={placeholder}
         required={required && !id}
+        ref={inputRef}
         onChange={(e) => {
           setTexto(e.target.value);
           setId("");
+          setItens([]);
+          if (blurTimer.current) clearTimeout(blurTimer.current);
           setAberto(true);
         }}
-        onFocus={() => setAberto(true)}
-        onBlur={() => setTimeout(() => setAberto(false), 150)}
+        onFocus={() => {
+          if (blurTimer.current) clearTimeout(blurTimer.current);
+          setAberto(true);
+        }}
+        onBlur={() => {
+          blurTimer.current = setTimeout(() => setAberto(false), 150);
+        }}
         onKeyDown={(e) => {
           if (!aberto || itens.length === 0) return;
           if (e.key === "ArrowDown") {
